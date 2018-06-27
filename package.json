@@ -7,7 +7,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "@clinicaldatalabs/react-native-scribe-audio": "^1.2.4",
+    "@clinicaldatalabs/react-native-scribe-audio": "^1.2.5",
     "react": "16.3.1",
     "react-native": "0.55.4",
     "react-native-fs": "^2.9.12"
