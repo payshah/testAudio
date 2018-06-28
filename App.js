@@ -6,7 +6,7 @@
 import RNFS from 'react-native-fs';
 import uuid from './uuid';
 import React, { Component } from 'react';
-import { Platform, StyleSheet, NativeModules, NativeEventEmitter, TouchableHighlight, Text, View } from 'react-native';
+import { Slider, Platform, StyleSheet, NativeModules, NativeEventEmitter, TouchableHighlight, Text, View } from 'react-native';
 
 const instructions = Platform.select({
   ios: 'Press Cmd+R to reload,\n' + 'Cmd+D or shake for dev menu',
@@ -44,7 +44,7 @@ export default class App extends Component<Props> {
   }
   updatePosition(position, duration) {
     console.log('updatePosition ' + position + ' Duration: ' + duration);
-    this.setState({ currentTime: Math.floor(duration) });
+    this.setState({ currentTime: Math.floor(position) });
   }
   updateState(state) {
     this.setState({ currentState: state });
@@ -57,6 +57,10 @@ export default class App extends Component<Props> {
         <Text style={style}>{title}</Text>
       </TouchableHighlight>
     );
+  }
+  seek(p) {
+    console.log('seeking% = ' + p);
+    this.setState({ currentTime: p });
   }
 
   render() {
@@ -86,6 +90,7 @@ export default class App extends Component<Props> {
       <View style={styles.container}>
         <View style={styles.controls}>
           {recordBtn}
+          <Slider onValueChange={p => this.seek(p)} value={this.state.currentTime} minimumValue={0} maximumValue={100} step={1} style={styles.slider} />
           <Text style={styles.progressText}>{this.state.currentTime}s</Text>
           {playBtn}
         </View>
@@ -107,6 +112,9 @@ const styles = StyleSheet.create({
   progressText: {
     paddingTop: 50,
     fontSize: 50
+  },
+  slider: {
+    width: '90%'
   },
   welcome: {
     fontSize: 20,
