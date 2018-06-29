@@ -25,6 +25,7 @@ export default class App extends Component<Props> {
       filename: uuid() + '.wav',
       recording: false,
       currentTime: 0.0,
+      p: 0,
       currentState: 'STATE_INIT'
     };
     AudioEngine.setInputGain(3);
@@ -44,7 +45,7 @@ export default class App extends Component<Props> {
   }
   updatePosition(position, duration) {
     console.log('updatePosition ' + position + ' Duration: ' + duration);
-    this.setState({ currentTime: Math.floor(position) });
+    this.setState({ currentTime: Math.floor(position), p: position });
   }
   updateState(state) {
     this.setState({ currentState: state });
@@ -60,6 +61,7 @@ export default class App extends Component<Props> {
   }
   seek(p) {
     console.log('seeking% = ' + p);
+
     AudioEngine.setPosition(p);
     this.setState({ currentTime: p });
   }
@@ -76,14 +78,14 @@ export default class App extends Component<Props> {
         AudioEngine.record();
       });
     }
-    if (this.state.currentState === 'STATE_PlAY') {
-      playdBtn = this.renderButton('STOP', () => {
-        console.log('play stop button pushed');
+    if (this.state.currentState === 'STATE_PLAY') {
+      playBtn = this.renderButton('STOP', () => {
         AudioEngine.stop();
       });
     } else {
       playBtn = this.renderButton('PLAY', () => {
         console.log('play button pushed');
+        console.log(this.state.p);
         AudioEngine.play();
       });
     }
