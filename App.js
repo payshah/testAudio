@@ -60,6 +60,7 @@ export default class App extends Component<Props> {
   }
   seek(p) {
     console.log('seeking% = ' + p);
+    AudioEngine.setPosition(p);
     this.setState({ currentTime: p });
   }
 
