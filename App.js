@@ -6,7 +6,7 @@
 import RNFS from 'react-native-fs';
 import uuid from './uuid';
 import React, { Component } from 'react';
-import { Slider, Platform, StyleSheet, NativeModules, NativeEventEmitter, TouchableHighlight, Text, View } from 'react-native';
+import { Slider, Platform, StyleSheet, NativeModules, NativeEventEmitter, NativeAppEventEmitter, TouchableHighlight, Text, View } from 'react-native';
 
 const instructions = Platform.select({
   ios: 'Press Cmd+R to reload,\n' + 'Cmd+D or shake for dev menu',
@@ -16,7 +16,7 @@ const instructions = Platform.select({
 type Props = {};
 const AudioEngine = NativeModules.AudioEngine;
 
-const AudioEventEmitter = new NativeEventEmitter(AudioEngine);
+//const AudioEventEmitter = new NativeEventEmitter(AudioEngine);
 
 export default class App extends Component<Props> {
   constructor(props) {
@@ -30,18 +30,29 @@ export default class App extends Component<Props> {
     };
     AudioEngine.setInputGain(3);
 
-    const AudioEventEmitter = new NativeEventEmitter(AudioEngine);
-    positionChange = AudioEventEmitter.addListener('audioPositionChanged', ev => {
-      console.log('ios audioPositionChanged: ' + ev.position + ' Duration: ' + ev.duration);
+    // if (Platform.OS === 'android') {
+    positionChange = NativeAppEventEmitter.addListener('audioPositionChanged', ev => {
+      //console.log('audioPositionChanged: ' + ev.position + ' Duration: ' + ev.duration);
       this.updatePosition(ev.position, ev.duration);
     });
-    stateChange = AudioEventEmitter.addListener('audioStateChanged', ev => {
-      console.log('audioStateChanged: ' + ev.state);
+    stateChange = NativeAppEventEmitter.addListener('audioStateChanged', ev => {
+      console.warn(`audioStateChanged: ${ev.state}`);
       this.updateState(ev.state);
     });
+    // } else {
+    // const AudioEventEmitter = new NativeEventEmitter(AudioEngine);
+    // positionChange = AudioEventEmitter.addListener('audioPositionChanged', ev => {
+    //   console.log('ios audioPositionChanged: ' + ev.position + ' Duration: ' + ev.duration);
+    //   this.updatePosition(ev.position, ev.duration);
+    // });
+    // stateChange = AudioEventEmitter.addListener('audioStateChanged', ev => {
+    //   console.log('audioStateChanged: ' + ev.state);
+    //   this.updateState(ev.state);
+    // });
+    // }
     AudioEngine.open(RNFS.DocumentDirectoryPath + '/' + this.state.filename)
-      .then(result => console.log('AudioEngine::open ' + result))
-      .catch(error => console.log('AudioEngine::open error ' + error));
+      .then(result => console.warn('AudioEngine::open ' + result))
+      .catch(error => console.warn('AudioEngine::open error ' + error));
   }
   updatePosition(position, duration) {
     console.log('updatePosition ' + position + ' Duration: ' + duration);
@@ -61,7 +72,6 @@ export default class App extends Component<Props> {
   }
   seek(p) {
     console.log('seeking% = ' + p);
-
     AudioEngine.setPosition(p);
     this.setState({ currentTime: p });
   }
