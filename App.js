@@ -13,6 +13,48 @@ const instructions = Platform.select({
   android: 'Double tap R on your keyboard to reload,\n' + 'Shake or press menu button for dev menu'
 });
 
+async function requestRecordPermission() {
+    try {
+        const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+                                                         { 'title': 'Native Recorder Permission',
+                                                           'message': 'Native Recorder requires record permission.'});
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+            console.log('Got Record Permission');
+        } else {
+            console.log('Denied Record Permission');
+        }
+    } catch (err) {
+        console.warn(err);
+    }
+}
+
+async function requestStoragePermission() {
+    try {
+        const read_granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+                                                         { 'title': 'Native Recorder Permission',
+                                                           'message': 'Native Recorder requires storage permission.'});
+        if (read_granted === PermissionsAndroid.RESULTS.GRANTED) {
+            console.log('Got Read Storage Permission');
+        } else {
+            console.log('Denied Read Storage Permission');
+        }
+
+        const write_granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+                                                               { 'title': 'Native Recorder Permission',
+                                                                 'message': 'Native Recorder requires storage permission.'});
+        if (write_granted === PermissionsAndroid.RESULTS.GRANTED) {
+            console.log('Got Write Storage Permission');
+        } else {
+            console.log('Denied Write Storage Permission');
+        }
+    } catch (err) {
+        console.warn(err);
+    }
+}
+
+requestRecordPermission();
+requestStoragePermission();
+
 type Props = {};
 const AudioEngine = NativeModules.AudioEngine;
 
@@ -59,6 +101,7 @@ export default class App extends Component<Props> {
     this.setState({ currentTime: Math.floor(position), p: position });
   }
   updateState(state) {
+    console.log('updating state to ' + state);
     this.setState({ currentState: state });
   }
   renderButton(title, onPress, active) {
@@ -81,15 +124,21 @@ export default class App extends Component<Props> {
     let playBtn;
     if (this.state.currentState === 'STATE_RECORD') {
       recordBtn = this.renderButton('STOP', () => {
+        console.log('stop record button pushed');
+        console.log(this.state.p);
         AudioEngine.stop();
       });
     } else {
       recordBtn = this.renderButton('RECORD', () => {
+        console.log('record button pushed');
+        console.log(this.state.p);
         AudioEngine.record();
       });
     }
     if (this.state.currentState === 'STATE_PLAY') {
       playBtn = this.renderButton('STOP', () => {
+        console.log('stop play button pushed');
+        console.log(this.state.p);
         AudioEngine.stop();
       });
     } else {
