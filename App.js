@@ -59,6 +59,7 @@ export default class App extends Component<Props> {
     this.setState({ currentTime: Math.floor(position), p: position });
   }
   updateState(state) {
+    console.warn('updateState= ' + state);
     this.setState({ currentState: state });
   }
   renderButton(title, onPress, active) {
