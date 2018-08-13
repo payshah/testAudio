@@ -75,6 +75,8 @@ export default class App extends Component<Props> {
       duration: 0,
       currentState: 'STATE_IDLE',
       manualPosition: '0', // string
+      getPosition: 0,
+      getDuration: 0,
     };
     AudioEngine.setInputGain(3);
     this.positionChange = null;
@@ -89,7 +91,8 @@ export default class App extends Component<Props> {
         console.log(`audioStateChanged: ${ev.state}`);
         this.updateState(ev.state);
       });
-    } else {
+    }
+    else {
       const AudioEventEmitter = new NativeEventEmitter(AudioEngine);
       this.positionChange = AudioEventEmitter.addListener('audioPositionChanged', ev => {
         console.log('ios audioPositionChanged: ' + ev.position + ' Duration: ' + ev.duration);
@@ -136,8 +139,9 @@ export default class App extends Component<Props> {
   handleGetPosition = () => {
     console.log('Get Position pressed');
     Promise.all([AudioEngine.position(), AudioEngine.duration()])
-      .then((pos, dur) => {
-        console.log('Get Position results: ' + pos + ', ' + dur);
+      .then((results) => {
+        console.log('Get Position results: ' + results[0] + ', ' + results[1]);
+        this.setState({ getPosition: results[0], getDuration: results[1] });
       })
       .catch((err) => {
         console.error(err);
@@ -176,7 +180,7 @@ export default class App extends Component<Props> {
       <View style={styles.container}>
         <View style={[styles.row, { flexDirection: 'column', width: '75%', alignItems: 'flex-start' }]}>
           <Text>State: {this.state.currentState}</Text>
-            <Text>Position: {this.state.position}</Text>
+          <Text>Position: {this.state.position}</Text>
           <Text>Duration: {this.state.duration}</Text>
         </View>
         <View style={styles.row}>
@@ -251,6 +255,10 @@ export default class App extends Component<Props> {
               <Text style={styles.buttonText}>Set Position</Text>
             </TouchableHighlight>
           </View>
+        </View>
+        <View style={[styles.row, { flexDirection: 'column', width: '75%', alignItems: 'flex-start' }]}>
+          <Text>Get Position: {this.state.getPosition}</Text>
+          <Text>Get Duration: {this.state.getDuration}</Text>
         </View>
       </View>
     );
