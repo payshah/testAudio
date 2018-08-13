@@ -6,7 +6,7 @@
 import RNFS from 'react-native-fs';
 import uuid from './uuid';
 import React, { Component } from 'react';
-import { Slider, Platform, StyleSheet, NativeModules, NativeEventEmitter, NativeAppEventEmitter, TouchableHighlight, Text, View } from 'react-native';
+import { Alert, Slider, Platform, TextInput, StyleSheet, NativeModules, NativeEventEmitter, NativeAppEventEmitter, TouchableHighlight, Text, View } from 'react-native';
 
 const instructions = Platform.select({
   ios: 'Press Cmd+R to reload,\n' + 'Cmd+D or shake for dev menu',
@@ -71,98 +71,186 @@ export default class App extends Component<Props> {
       filename: uuid() + '.wav',
       recording: false,
       currentTime: 0.0,
-      p: 0,
-      d: 0,
-      currentState: 'STATE_INIT'
+      position: 0,
+      duration: 0,
+      currentState: 'STATE_IDLE',
+      manualPosition: '0', // string
     };
     AudioEngine.setInputGain(3);
-    let positionChange = null;
-    let stateChange = null;
+    this.positionChange = null;
+    this.stateChange = null;
 
     if (Platform.OS === 'android') {
-      positionChange = NativeAppEventEmitter.addListener('audioPositionChanged', ev => {
+      this.positionChange = NativeAppEventEmitter.addListener('audioPositionChanged', ev => {
         //console.log('audioPositionChanged: ' + ev.position + ' Duration: ' + ev.duration);
         this.updatePosition(ev.position, ev.duration);
       });
-      stateChange = NativeAppEventEmitter.addListener('audioStateChanged', ev => {
-        console.warn(`audioStateChanged: ${ev.state}`);
+      this.stateChange = NativeAppEventEmitter.addListener('audioStateChanged', ev => {
+        console.log(`audioStateChanged: ${ev.state}`);
         this.updateState(ev.state);
       });
     } else {
       const AudioEventEmitter = new NativeEventEmitter(AudioEngine);
-      positionChange = AudioEventEmitter.addListener('audioPositionChanged', ev => {
+      this.positionChange = AudioEventEmitter.addListener('audioPositionChanged', ev => {
         console.log('ios audioPositionChanged: ' + ev.position + ' Duration: ' + ev.duration);
         this.updatePosition(ev.position, ev.duration);
       });
-      stateChange = AudioEventEmitter.addListener('audioStateChanged', ev => {
+      this.stateChange = AudioEventEmitter.addListener('audioStateChanged', ev => {
         console.log('audioStateChanged: ' + ev.state);
         this.updateState(ev.state);
       });
     }
     AudioEngine.open(RNFS.DocumentDirectoryPath + '/' + this.state.filename)
-      .then(result => console.warn('AudioEngine::open ' + result))
+      .then(result => console.log('AudioEngine::open ' + result))
       .catch(error => console.warn('AudioEngine::open error ' + error));
   }
+
+  componentWillUnmount() {
+    console.log('RECORDER', 'componentWillUnmount', this.positionChange);
+    if (Platform.OS === 'android') {
+      if (this.positionChange) NativeAppEventEmitter.removeListener(this.positionChange);
+      if (this.stateChange) NativeAppEventEmitter.removeListener(this.stateChange);
+    }
+    if (this.positionChange) this.positionChange.remove();
+    if (this.stateChange) this.stateChange.remove();
+
+    //if (this._positionTimeout) clearTimeout(this._positionTimeout);
+
+    AudioEngine.close();
+    //AudioEngine = null;
+  }
+
   updatePosition(position, duration) {
     console.log('updatePosition ' + position + ' Duration: ' + duration);
-    this.setState({ currentTime: Math.floor(position), p: position, d: duration });
+    this.setState({ currentTime: Math.floor(position), position, duration });
   }
   updateState(state) {
     console.log('updating state to ' + state);
     this.setState({ currentState: state });
   }
-  renderButton(title, onPress, active) {
-    var style = active ? styles.activeButtonText : styles.buttonText;
-
-    return (
-      <TouchableHighlight style={styles.button} onPress={onPress}>
-        <Text style={style}>{title}</Text>
-      </TouchableHighlight>
-    );
-  }
-  seek(p) {
+  seek = (p) => {
     console.log('seeking% = ' + p);
     AudioEngine.setPosition(p);
     this.setState({ currentTime: p });
-  }
+  };
+  handleGetPosition = () => {
+    console.log('Get Position pressed');
+    Promise.all([AudioEngine.position(), AudioEngine.duration()])
+      .then((pos, dur) => {
+        console.log('Get Position results: ' + pos + ', ' + dur);
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+  };
+  handleSetPosition = () => {
+    console.log('Set Position pressed', this.state.manualPosition);
+    const pos = parseFloat(this.state.manualPosition);
+    if (isNaN(pos) || pos > this.state.duration) {
+      Alert.alert('Invalid position');
+      return;
+    }
+    this.setState({ position: pos }, () => {
+      AudioEngine.setPosition(this.state.position);
+    });
+  };
+  changeManualPosition = (pos) => {
+    this.setState({ manualPosition: pos })
+  };
+  handleRecord = () => {
+    console.log('Record pressed');
+    AudioEngine.record().then(() => { console.log('Recording started')});
+  };
+  handlePlay = () => {
+    console.log('Play pressed');
+    AudioEngine.play().then(() => { console.log('Playing started')});
+  };
+  handleStop = () => {
+    console.log('Stop pressed');
+    AudioEngine.stop();
+  };
 
   render() {
-    let recordBtn;
-    let playBtn;
-    if (this.state.currentState === 'STATE_RECORD') {
-      recordBtn = this.renderButton('STOP', () => {
-        console.log('stop record button pushed');
-        console.log(this.state.p);
-        AudioEngine.stop();
-      });
-    } else {
-      recordBtn = this.renderButton('RECORD', () => {
-        console.log('record button pushed');
-        console.log(this.state.p);
-        AudioEngine.record();
-      });
-    }
-    if (this.state.currentState === 'STATE_PLAY') {
-      playBtn = this.renderButton('STOP', () => {
-        console.log('stop play button pushed');
-        console.log(this.state.p);
-        AudioEngine.stop();
-      });
-    } else {
-      playBtn = this.renderButton('PLAY', () => {
-        console.log('play button pushed');
-        console.log(this.state.p);
-        if (this.state.d === this.state.p) AudioEngine.setPosition(0);
-        AudioEngine.play();
-      });
-    }
+    const currentState = this.state.currentState;
     return (
       <View style={styles.container}>
-        <View style={styles.controls}>
-          {recordBtn}
-          <Slider onValueChange={p => this.seek(p)} value={this.state.currentTime} minimumValue={0} maximumValue={100} step={1} style={styles.slider} />
-          <Text style={styles.progressText}>{this.state.currentTime}s</Text>
-          {playBtn}
+        <View style={[styles.row, { flexDirection: 'column', width: '75%', alignItems: 'flex-start' }]}>
+          <Text>State: {this.state.currentState}</Text>
+            <Text>Position: {this.state.position}</Text>
+          <Text>Duration: {this.state.duration}</Text>
+        </View>
+        <View style={styles.row}>
+          <View style={styles.buttons}>
+            <TouchableHighlight
+              title='Play'
+              style={styles.button}
+              onPress={this.handlePlay}
+              disabled={this.state.duration === 0 || currentState !== 'STATE_IDLE'}
+            >
+              <Text style={styles.buttonText}>Play</Text>
+            </TouchableHighlight>
+            <TouchableHighlight
+              title='Stop'
+              style={styles.button}
+              onPress={this.handleStop}
+              disabled={currentState === 'STATE_IDLE'}
+            >
+              <Text style={styles.buttonText}>Stop!</Text>
+            </TouchableHighlight>
+            <TouchableHighlight
+              title='Record'
+              style={[styles.button, { backgroundColor: 'red' }]}
+              onPress={this.handleRecord}
+              disabled={currentState !== 'STATE_IDLE'}
+            >
+              <Text style={styles.buttonText}>Record</Text>
+            </TouchableHighlight>
+          </View>
+        </View>
+        <View style={styles.row}>
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'stretch' }}>
+            <Slider
+              onSlidingComplete={this.seek}
+              value={this.state.currentTime}
+              minimumValue={0}
+              maximumValue={100}
+              step={1}
+              style={styles.slider}
+              disabled={this.state.duration === 0 || currentState !== 'STATE_IDLE'}
+            />
+          </View>
+        </View>
+        <View style={styles.row}>
+          <View style={{ justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={styles.progressText}>{this.state.currentTime}s</Text>
+          </View>
+        </View>
+        <View style={styles.row}>
+          <View style={styles.buttons}>
+            <TouchableHighlight
+              title='Get Position'
+              style={styles.button}
+              onPress={this.handleGetPosition}
+              disabled={currentState !== 'STATE_IDLE'}
+            >
+              <Text style={styles.buttonText}>Get Position</Text>
+            </TouchableHighlight>
+            <TextInput
+              autoCorrect={false}
+              autoCapitalize='none'
+              onChangeText={this.changeManualPosition}
+              value={this.state.manualPosition}
+              style={{ borderColor: 'gray', borderWidth: 1, width: 50, height: '90%' }}
+            />
+            <TouchableHighlight
+              title='Set Position'
+              style={[ styles.button, { backgroundColor: 'green' }]}
+              onPress={this.handleSetPosition}
+              disabled={this.state.duration === 0 || currentState !== 'STATE_IDLE'}
+            >
+              <Text style={styles.buttonText}>Set Position</Text>
+            </TouchableHighlight>
+          </View>
         </View>
       </View>
     );
@@ -171,7 +259,14 @@ export default class App extends Component<Props> {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1
+    flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'flex-start',
+    marginTop: 50,
+  },
+  row: {
+    padding: 10,
+    minHeight: 60,
   },
   controls: {
     justifyContent: 'center',
@@ -179,8 +274,29 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'column'
   },
+  buttons: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  button: {
+    flex: 1,
+    alignSelf: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginHorizontal: 5,
+    backgroundColor: '#87CEFA',
+    borderColor: 'gray',
+    borderWidth: 1,
+  },
+  buttonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
+    textAlign: 'center',
+  },
   progressText: {
-    paddingTop: 50,
     fontSize: 50
   },
   slider: {
