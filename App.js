@@ -54,9 +54,10 @@ async function requestStoragePermission() {
     console.warn(err);
   }
 }
-
-requestRecordPermission();
-requestStoragePermission();
+if (Platform.OS === 'android') {
+  requestRecordPermission();
+  requestStoragePermission();
+}
 
 type Props = {};
 const AudioEngine = NativeModules.AudioEngine;
@@ -71,6 +72,7 @@ export default class App extends Component<Props> {
       recording: false,
       currentTime: 0.0,
       p: 0,
+      d: 0,
       currentState: 'STATE_INIT'
     };
     AudioEngine.setInputGain(3);
@@ -103,7 +105,7 @@ export default class App extends Component<Props> {
   }
   updatePosition(position, duration) {
     console.log('updatePosition ' + position + ' Duration: ' + duration);
-    this.setState({ currentTime: Math.floor(position), p: position });
+    this.setState({ currentTime: Math.floor(position), p: position, d: duration });
   }
   updateState(state) {
     console.log('updating state to ' + state);
@@ -150,6 +152,7 @@ export default class App extends Component<Props> {
       playBtn = this.renderButton('PLAY', () => {
         console.log('play button pushed');
         console.log(this.state.p);
+        if (this.state.d === this.state.p) AudioEngine.setPosition(0);
         AudioEngine.play();
       });
     }
